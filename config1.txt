@@ -1,7 +1,7 @@
-red 0 10 
-orange 10 18 
-yellow 20 38 
-green 31 72 
-blue 61 75 
-purple 124 163 
-pink 146 186 
+red 0 10 100 20 
+orange 10 18 100 20 
+yellow 20 38 100 20 
+green 31 79 100 20 
+blue 100 133 150 20 
+purple 120 149 50 20 
+pink 146 186 100 20 
