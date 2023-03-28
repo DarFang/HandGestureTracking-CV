@@ -19,11 +19,12 @@ class CSTracker():
         # self.roi_hist = cv.calcHist([hsv_roi],[0],mask,[180],[0,180])
         cv.normalize(self.roi_hist,mask,0,50,cv.NORM_MINMAX)
         # Setup the termination criteria, either 10 iteration or move by at least 1 pt
-        self.term_crit = ( cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 10, 1 )
+        self.term_crit = ( cv.TERM_CRITERIA_EPS | cv.TERM_CRITERIA_COUNT, 5, 3 )
         self.center = []
     
     def updatePoints(self, hsv):
         self.dst = cv.calcBackProject([hsv],[0],self.roi_hist,[self.color[0],self.color[1]],1)
+        self.dst = cv.putText(self.dst, self.ID, (20, 20), cv.FONT_HERSHEY_SIMPLEX, .5, (255,255,255), 1, cv.LINE_AA)
         # apply camshift to get the new location
         ret, self.track_window = cv.CamShift(self.dst, self.track_window,self. term_crit)
         # Draw it on image
