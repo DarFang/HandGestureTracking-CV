@@ -129,13 +129,52 @@ def CalibrateHand(Input):
     # t3 = cst("green4", [*arrPoints[4], *arrPoints[5]],[31,79,180, 20],  frame)
     # hand = [t1, t2, t3]
 hand = CalibrateHand(Input)
+
+"""2,4,8,10"""
+def palmCords (tracker):
+    palm = []
+    for i in [1, 3, 7, 9]:
+        palm.append(np.array(tracker[i].center))
+    return palm
+
+points = 4
+
+def getA(x, y):
+    A = np.zeros((2, 9))
+    A[0, 3:6] = -x* y[2]
+    A[0, 6:9] = x* y[1]
+    A[1, :3] = x*y[2]
+    A[1, 6:9] = -x*y[0]
+    return A
+def convertPoint2Homog(input):
+    out = np.array([0,0,1])
+    out[:2] = input[:2]
+    return out
+def solveForH(img1Points, img2Points):
+    A = []
+    for i in range (points):
+        x = np.array(convertPoint2Homog(img1Points[i]))
+        x_1 = np.array(convertPoint2Homog(img2Points[i]))
+        A.append(getA(x, x_1))
+    
+
+    B = np.concatenate((A[0], A[1], A[2], A[3]), axis=0)
+    U, S, V = np.linalg.svd(B)
+    # print(V[:, -1])
+    H = V[-1, :]
+    H = H.reshape(3,3)
+    return H
+
 index = 0
+init = True
 while(1):
     ret, frame = cam.read()
     if mirror:
         frame = cv.flip(frame, -1)
     frameC = frame.copy()
+    height, width = frame.shape[:2]
     if ret == True:
+
         hsv = cv.cvtColor(frame, cv.COLOR_BGR2HSV)
         for t in hand:
             t.updatePoints(hsv)
@@ -146,6 +185,39 @@ while(1):
         frame = cv.circle(frame, midpoint[:], radius=5, color=(0, 0, 255), thickness=10)
 
 
+        """warp pers"""
+        currentPalmCords = palmCords(hand)
+        if init :
+            init = False
+            initPalmCords = palmCords(hand)
+
+        else:
+
+            H = solveForH(currentPalmCords, initPalmCords)
+            
+            K = [[300, 0, 960], [0, 300, 540], [0, 0, 1]]
+
+            # Decompose homography matrix
+            retval, R, t, N = cv.decomposeHomographyMat(H, K)
+
+            # Print solutions
+            for i in range(len(R)):
+                print("Solution ", i)
+                print("Rotation: \n", R[i])
+                print("Translation: ", t[i])
+            # print(R)
+            # H = H/H[2,2]
+            # print(H)
+            # tx = H[0,2]
+            # ty = H[1,2]
+            # import math
+            
+            # R = math.degrees(math.atan(H[0,1]/H[0,0]))
+            dst = cv.warpPerspective(frame, H, (width,height))
+
+            cv.imshow("warp", dst)
+            frame = cv.putText(frame, str(R), (20,20), cv.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 0), 1, cv.LINE_AA)
+            frame = cv.putText(frame, (str(t) + " " + str(ty)), (20,20), cv.FONT_HERSHEY_SIMPLEX, .5, (0, 0, 0), 1, cv.LINE_AA)
         # dst = cv.warpPerspective(img1, H, (width,height))
         cv.imshow("hist", hand[index%numTrackers].dst)
         cv.imshow("frame", frame)
@@ -159,6 +231,8 @@ while(1):
             index = index+1
         if k == ord('c'):
             hand = CalibrateHand(frameC)
+            init = True
+            initPalmCords = palmCords(hand)
         if k == ord('p'):
             while True:
                 k = cv.waitKey(0)
